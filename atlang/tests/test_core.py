@@ -1,7 +1,7 @@
 """py.test based unit tests for atlang core"""
 import pytest
 
-from .. import Type, TypeFormationError, tycon, is_tycon
+from .. import Type, TypeFormationError, tycon, is_tycon, IncompleteType
 
 class unit_(Type):
   @classmethod
@@ -29,7 +29,10 @@ def test_unit_eq():
   assert unit == unit
 
 class ty2_(Type):
-  pass
+  @classmethod
+  def validate_inc_idx(cls, inc_idx):
+    if inc_idx is not Ellipsis and inc_idx != (0, Ellipsis):
+      raise TypeFormationError("Bad incomplete index.")
 
 ty2 = ty2_[()]
 
@@ -47,3 +50,20 @@ def test_is_tycon():
 def test_tycon():
   assert tycon(ty2) is ty2_ and tycon(unit) is unit_
 
+def test_incty_construction_1():
+  inc_ty2 = ty2_[...]
+  assert isinstance(inc_ty2, IncompleteType)
+  assert inc_ty2.tycon is ty2_
+  assert tycon(inc_ty2) is ty2_
+  assert inc_ty2.inc_idx == Ellipsis
+
+def test_incty_construction_2():
+  inc_ty2 = ty2_[0, ...]
+  assert isinstance(inc_ty2, IncompleteType)
+  assert inc_ty2.tycon is ty2_
+  assert tycon(inc_ty2) is ty2_
+  assert inc_ty2.inc_idx == (0, Ellipsis)
+
+def test_incty_bad_construction():
+  with pytest.raises(TypeFormationError):
+    ty2_[..., 0]

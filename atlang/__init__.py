@@ -18,14 +18,18 @@ class TypeFormationError(Exception):
 class _TypeMetaclass(type): # here, type is Python's "type" 
   def __getitem__(self, idx):
     if _contains_ellipsis(idx):
+      self.validate_inc_idx(idx)
       return IncompleteType(self, idx)
     else:
       self.validate_idx(idx)
       return self(idx, True)
 
 def _contains_ellipsis(idx):
-  # TODO: implement this
-  return False
+  if idx is Ellipsis: return True
+  elif isinstance(idx, tuple):
+    for item in idx:
+      if item is Ellipsis: return True
+  return False 
 
 @six.add_metaclass(_TypeMetaclass)
 class Type(object):
@@ -44,6 +48,10 @@ class Type(object):
   def validate_idx(cls, idx):
     pass
 
+  @classmethod
+  def validate_inc_idx(cls, inc_idx):
+    pass 
+
   def __eq__(self, other):
     return tycon(self) is tycon(other) and self.idx == other.idx
 
@@ -51,8 +59,13 @@ class Type(object):
     return not self.__eq__(other)
 
 def tycon(ty):
-  """Returns the tycon of the provided type (does not check whether ty is a type)."""
-  return ty.__class__
+  """Returns the tycon of the provided type or incomplete type ."""
+  if isinstance(ty, Type):
+    return ty.__class__
+  elif isinstance(ty, IncompleteType):
+    return ty.tycon
+  else:
+    raise Exception("Argument to tycon is not a type or incomplete type.")
 
 def is_tycon(x):
   """Indicates that the provided object is a tycon."""
