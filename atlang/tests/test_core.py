@@ -1,7 +1,8 @@
 """py.test based unit tests for atlang core"""
 import pytest
+import ast
 
-from .. import Type, TypeFormationError, tycon, is_tycon, IncompleteType
+from .. import Type, TypeFormationError, tycon, is_tycon, IncompleteType, FnType, Fn, StaticEnv
 
 class unit_(Type):
   @classmethod
@@ -9,6 +10,7 @@ class unit_(Type):
     if idx != ():
       raise TypeFormationError("Index of unit type must be ().")
 
+# TODO: put this stuff in test classes?
 unit = unit_[()]
 
 def test_unit_construction(): 
@@ -67,3 +69,46 @@ def test_incty_construction_2():
 def test_incty_bad_construction():
   with pytest.raises(TypeFormationError):
     ty2_[..., 0]
+
+class fn(FnType):
+  def ana_FunctionDef_TopLevel(self, tree, static_env): 
+    pass
+  
+  @classmethod
+  def syn_idx_FunctionDef_TopLevel(self, tree, setatic_env):
+    return (unit, unit)
+fnty = fn[unit, unit]
+
+def test_fnty_construction():
+  assert isinstance(fnty, FnType)
+
+def test_fnty_decorator():
+  @fnty
+  def test(): 
+    pass
+  assert isinstance(test, Fn)
+  assert isinstance(test.tree, ast.FunctionDef)
+
+g = 0
+a = 0
+def test_fnty_static_env():
+  a = 1
+  @fnty
+  def test():
+    return a
+  assert isinstance(test.static_env, StaticEnv)
+  assert test.static_env['a'] == 1
+  assert test.static_env['g'] == 0
+
+incfnty = fn[...]
+def test_incfnty_construction():
+  assert isinstance(incfnty, IncompleteType)
+  assert tycon(incfnty) == fn
+
+def test_incfnty_decorator():
+  @incfnty
+  def test():
+    pass
+  assert isinstance(test, Fn)
+  assert test.ty == fn[unit, unit]
+
